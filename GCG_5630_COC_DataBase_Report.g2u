@@ -1,0 +1,432 @@
+Program.Sub.ScreenSU.Start
+Gui.Form..Create
+Gui.Form..Caption("COC")
+Gui.Form..Size(10500,7815)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MousePointer(0)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form.lblDate.Create(Label,"Manufacture Date",True,1935,255,0,60,120,True,0,"Arial",8,-2147483633,0)
+Gui.Form.lblthru.Create(Label,"thru",True,405,255,0,1185,420,True,0,"Arial",8,-2147483633,0)
+Gui.Form.gsgcDash.Create(GsGridControl)
+Gui.Form.gsgcDash.Size(10380,6840)
+Gui.Form.gsgcDash.Position(0,690)
+Gui.Form.gsgcDash.Anchor(15)
+Gui.Form.cmdRefresh.Create(Button)
+Gui.Form.cmdRefresh.Size(450,450)
+Gui.Form.cmdRefresh.Position(2715,210)
+Gui.Form.cmdRefresh.Caption("REFRESH")
+Gui.Form.cmdRefresh.Event(Click,cmdRefresh_Click)
+Gui.Form.cmdExport.Create(Button)
+Gui.Form.cmdExport.Size(855,450)
+Gui.Form.cmdExport.Position(9330,210)
+Gui.Form.cmdExport.Anchor(9)
+Gui.Form.cmdExport.Caption("Export")
+Gui.Form.cmdExport.Event(Click,cmdExport_Click)
+Gui.Form.cmdExport.Enabled(False)
+Gui.Form.txtBegMonth.Create(TextBox,"",True,330,300,0,90,345,True,1,"Arial",8,-2147483643,1)
+Gui.Form.txtBegMonth.NumericOnly(2)
+Gui.Form.txtBegMonth.Event(Change,txtBegMonth_Change)
+Gui.Form.lblBegSlash.Create(Label,"/",True,135,255,0,450,435,True,0,"Arial",8,-2147483633,0)
+Gui.Form.txtBegYear.Create(TextBox,"",True,525,300,0,615,345,True,1,"Arial",8,-2147483643,1)
+Gui.Form.txtBegYear.NumericOnly(2)
+Gui.Form.txtEndMonth.Create(TextBox,"",True,330,300,0,1575,345,True,1,"Arial",8,-2147483643,1)
+Gui.Form.txtEndMonth.NumericOnly(2)
+Gui.Form.txtEndMonth.Event(Change,txtEndMonth_Change)
+Gui.Form.lblEndSlash.Create(Label,"/",True,135,255,0,1935,435,True,0,"Arial",8,-2147483633,0)
+Gui.Form.txtEndYear.Create(TextBox,"",True,525,300,0,2100,345,True,1,"Arial",8,-2147483643,1)
+Gui.Form.txtEndYear.NumericOnly(2)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Author: Bix
+'Date: 6 August 2019
+'Packard International, Inc.
+'GCG_5630_COC_DataBase_Report.g2u
+'Dashboard of sales analysis data
+V.Local.sError.Declare
+V.Local.sIcon.Declare
+V.Local.dMonth.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Date.BeginningOfMonth(V.Ambient.Date,V.Local.dMonth)
+Gui.Form.txtBegMonth.Text(V.Ambient.Date.FormatM)
+Gui.Form.txtBegYear.Text(V.Ambient.Date.FormatYYYY)
+Gui.Form.txtEndMonth.Text(V.Ambient.Date.FormatM)
+Gui.Form.txtEndYear.Text(V.Ambient.Date.FormatYYYY)
+
+F.Intrinsic.String.Build("{0}\gss2.ico",V.Caller.GASDir,V.Local.sIcon)
+Gui.Form..Icon(V.Local.sIcon)
+
+Gui.Form..Show
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.If(V.DataTable.dtCOCData.Exists)
+	F.Intrinsic.Control.CallSub(Serialize)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.End
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.GetDataTable.Start
+V.Local.sError.Declare
+V.Local.sSQL.Declare
+V.Local.dBeg.Declare
+V.Local.dEnd.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Date.DateSerial(V.Screen.Form!txtBegYear.Text,V.Screen.Form!txtBegMonth.Text,1,V.Local.dBeg)
+F.Intrinsic.Date.DateSerial(V.Screen.Form!txtEndYear.Text,V.Screen.Form!txtEndMonth.Text,1,V.Local.dEnd)
+F.Intrinsic.Date.EndOfMonth(V.Local.dEnd,V.Local.dEnd)
+F.ODBC.Connection!con.OpenCompanyConnection
+F.Data.DataTable.CreateFromSQL("dtOrderHistLines","con","select ORDER_NO, left(ORDER_LINE,3) as LINE_STR, rtrim(PART) as PART, rtrim(CUSTOMER_PO) as CUSTOMER_PO, rtrim(DESCRIPTION) as DESCRIPTION, ORDER_NO + ORDER_LINE + ORDER_SUFFIX + INVOICE as KEY_Serial, ORDER_NO + ORDER_LINE as KEY_Job from V_ORDER_HIST_LINE;")
+F.Data.DataTable.CreateFromSQL("dtShipmentLines","con","select A.ORDER_NO, left(A.ORDER_REC,3) as LINE_STR, rtrim(A.PART) as PART, rtrim(B.CUSTOMER_PO) as CUSTOMER_PO, rtrim(A.ORDER_DESC) as DESCRIPTION, A.ORDER_NO + A.ORDER_REC + A.ORDER_SUFFIX + '       ' as KEY_Serial, A.ORDER_NO + A.ORDER_REC as KEY_Job from V_SHIPMENT_LINES A left join V_SHIPMENT_HEADER B on A.ORDER_NO = B.ORDER_NO and A.ORDER_SUFFIX = B.ORDER_SUFFIX;")
+F.Data.DataTable.CreateFromSQL("dtOrderHistLinesExtra","con","select ORDER_NO, left(ORDER_LINE,3) as LINE_STR, rtrim(PART) as PART, rtrim(CUSTOMER_PO) as CUSTOMER_PO, rtrim(DESCRIPTION) as DESCRIPTION, ORDER_NO + ORDER_LINE + ORDER_SUFFIX + INVOICE as KEY_Serial, ORDER_NO + ORDER_LINE as KEY_Job from V_ORDER_HIST_LINE where KEY_Serial not in (select ORDER_NO + ORDER_LINE + ORDER_SUFFIX + INVOICE from V_ORDER_HIST_LOT where SERIAL <> '');")
+F.Data.DataTable.CreateFromSQL("dtShipmentLinesExtra","con","select A.ORDER_NO, left(A.ORDER_REC,3) as LINE_STR, rtrim(A.PART) as PART, rtrim(B.CUSTOMER_PO) as CUSTOMER_PO, rtrim(A.ORDER_DESC) as DESCRIPTION, A.ORDER_NO + A.ORDER_REC + A.ORDER_SUFFIX + '       ' as KEY_Serial, A.ORDER_NO + A.ORDER_REC as KEY_Job from V_SHIPMENT_LINES A left join V_SHIPMENT_HEADER B on A.ORDER_NO = B.ORDER_NO and A.ORDER_SUFFIX = B.ORDER_SUFFIX where KEY_Serial not in (select ORDER_NO + ORDER_LINE + ORDER_SUFFIX + INVOICE from V_ORDER_HIST_LOT where SERIAL <> '');")
+F.Data.DataTable.CreateFromSQL("dtSerial","con","select ORDER_NO + ORDER_LINE + ORDER_SUFFIX + INVOICE as KEY_Serial, rtrim(SERIAL) as SERIAL from V_ORDER_HIST_LOT where SERIAL <> '';")
+F.Data.DataTable.CreateFromSQL("dtSOtoWO","con","select ORDER_NO + ORDER_LINE as KEY_Job, JOB + SUFFIX as JOBSUFF from V_ORDER_TO_WO;")
+F.Data.DataTable.CreateFromSQL("dtWOCloseDates","con","select JOB + SUFFIX as JOBSUFF, month(DATE_CLOSED) as MONTH_MANUF, year(DATE_CLOSED) as YEAR_MANUF, DATE_CLOSED from V_JOB_HEADER where DATE_CLOSED <> '1900-01-01';")
+F.Data.DataTable.CreateFromSQL("dtClosedWOs","con","select JOB + SUFFIX as JOBSUFF, month(DATE_CLOSED) as MONTH_MANUF, year(DATE_CLOSED) as YEAR_MANUF, DATE_CLOSED from V_JOB_HIST_MAST where DATE_CLOSED <> '1900-01-01';")
+F.ODBC.Connection!con.Close
+
+F.Data.DataTable.Merge("dtClosedWOs","dtWOCloseDates",True,2)
+F.Data.DataTable.Close("dtClosedWOs")
+
+F.Data.DataTable.AddExpressionColumn("dtOrderHistLines","LINE_INT","Integer","Convert(LINE_STR, System.Int32)")
+F.Data.DataTable.AddExpressionColumn("dtShipmentLines","LINE_INT","Integer","Convert(LINE_STR, System.Int32)")
+F.Data.DataTable.AddExpressionColumn("dtOrderHistLinesExtra","LINE_INT","Integer","Convert(LINE_STR, System.Int32)")
+F.Data.DataTable.AddExpressionColumn("dtShipmentLinesExtra","LINE_INT","Integer","Convert(LINE_STR, System.Int32)")
+F.Data.DataTable.AddExpressionColumn("dtOrderHistLines","ORDER_LINE","String","IIF(LINE_INT > 9, Convert(LINE_INT, System.String),'0' + Convert(LINE_INT, System.String))")
+F.Data.DataTable.AddExpressionColumn("dtShipmentLines","ORDER_LINE","String","IIF(LINE_INT > 9, Convert(LINE_INT, System.String),'0' + Convert(LINE_INT, System.String))")
+F.Data.DataTable.AddExpressionColumn("dtOrderHistLinesExtra","ORDER_LINE","String","IIF(LINE_INT > 9, Convert(LINE_INT, System.String),'0' + Convert(LINE_INT, System.String))")
+F.Data.DataTable.AddExpressionColumn("dtShipmentLinesExtra","ORDER_LINE","String","IIF(LINE_INT > 9, Convert(LINE_INT, System.String),'0' + Convert(LINE_INT, System.String))")
+
+F.Data.DataTable.AddExpressionColumn("dtWOCloseDates","MONTH_STRING","String","MONTH_MANUF")
+F.Data.DataTable.AddExpressionColumn("dtWOCloseDates","YEAR_STRING","String","YEAR_MANUF")
+F.Data.DataTable.AddExpressionColumn("dtWOCloseDates","DATE_MANUF","String","SUBSTRING('00' + MONTH_STRING, LEN('00' + MONTH_STRING) - 1, 2) + '/' + SUBSTRING(YEAR_STRING, 3, 2)")
+
+F.Data.Linq.Join("InnerJoin","DataTable","dtOrderHistLines*!*LINES","DataTable","dtSerial*!*SERIAL","LINES.KEY_Serial = SERIAL.KEY_Serial","LINES.ORDER_NO*!*LINES.ORDER_LINE*!*LINES.CUSTOMER_PO*!*LINES.PART*!*LINES.DESCRIPTION*!*SERIAL.SERIAL*!*LINES.KEY_Job",,,,"dtLinesAll",False)
+F.Data.DataTable.Merge("dtOrderHistLinesExtra","dtLinesAll",True,2)
+F.Data.DataTable.Close("dtOrderHistLines")
+F.Data.DataTable.Close("dtOrderHistLinesExtra")
+F.Data.Linq.Join("InnerJoin","DataTable","dtShipmentLines*!*LINES","DataTable","dtSerial*!*SERIAL","LINES.KEY_Serial = SERIAL.KEY_Serial","LINES.ORDER_NO*!*LINES.ORDER_LINE*!*LINES.CUSTOMER_PO*!*LINES.PART*!*LINES.DESCRIPTION*!*SERIAL.SERIAL*!*LINES.KEY_Job",,,,"dtShipmentLinesAll",False)
+F.Data.DataTable.Merge("dtShipmentLinesExtra","dtShipmentLinesAll",True,2)
+F.Data.DataTable.Close("dtShipmentLines")
+F.Data.DataTable.Close("dtShipmentLinesExtra")
+F.Data.DataTable.Close("dtSerial")
+
+F.Data.DataTable.Merge("dtShipmentLinesAll","dtLinesAll",True,2)
+F.Data.DataTable.Close("dtShipmentLinesAll")
+
+F.Data.Linq.Join("InnerJoin","DataTable","dtLinesAll*!*LINES","DataTable","dtSOtoWO*!*JOBLIST","LINES.KEY_Job = JOBLIST.KEY_Job","LINES.ORDER_NO*!*LINES.ORDER_LINE*!*LINES.CUSTOMER_PO*!*LINES.PART*!*LINES.DESCRIPTION*!*LINES.SERIAL*!*JOBLIST.JOBSUFF",,,,"dtJobLinked",False)
+F.Data.DataTable.Close("dtLinesAll")
+F.Data.DataTable.Close("dtSOtoWO")
+
+F.Data.Linq.Join("LeftJoin","DataTable","dtJobLinked*!*LINES","DataTable","dtWOCloseDates*!*DATES","LINES.JOBSUFF = DATES.JOBSUFF","LINES.ORDER_NO*!*LINES.ORDER_LINE*!*LINES.CUSTOMER_PO*!*DATES.DATE_MANUF*!*LINES.PART*!*LINES.DESCRIPTION*!*LINES.SERIAL*!*DATES.DATE_CLOSED",,,"DATES.DATE_CLOSED desc, LINES.PART asc, LINES.SERIAL asc, LINES.ORDER_NO asc","dtCOCDataNoFilter",False)
+F.Data.DataTable.Close("dtJobLinked")
+F.Data.DataTable.Close("dtWOCloseDates")
+
+F.Intrinsic.String.Build("DATE_CLOSED >= #{0}# and DATE_CLOSED <= #{1}#",V.Local.dBeg,V.Local.dEnd,V.Local.sSQL)
+F.Data.DataView.Create("dtCOCDataNoFilter","dvFilter",22,V.Local.sSQL,)
+F.Data.DataView.ToDataTable("dtCOCDataNoFilter","dvFilter","dtCOCData",True)
+F.Data.DataTable.Close("dtCOCDataNoFilter")
+
+F.Data.DataTable.AddColumn("dtCOCData","INDEX","Long")
+F.Data.DataTable.SetSeries("dtCOCData","INDEX",1,1)
+F.Data.DataTable.AddColumn("dtCOCData","ISO","String","9001")
+F.Data.DataTable.AddColumn("dtCOCData","API","String","7-1")
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.GetDataTable.End
+
+Program.Sub.cmdRefresh_Click.Start
+V.Local.sError.Declare
+V.Local.dBegDate.Declare
+V.Local.dEndDate.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.If(V.Screen.Form!txtBegMonth.Text,=,"","or",V.Screen.Form!txtBegYear.Text,=,"",V.Screen.Form!txtEndMonth.Text,=,"",V.Screen.Form!txtEndYear.Text,=,"")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Date.DateSerial(V.Screen.Form!txtBegYear.Text,V.Screen.Form!txtBegMonth.Text,1,V.Local.dBegDate)
+F.Intrinsic.Date.DateSerial(V.Screen.Form!txtEndYear.Text,V.Screen.Form!txtEndMonth.Text,1,V.Local.dEndDate)
+F.Intrinsic.Control.If(V.Local.dBegDate,>,V.Local.dEndDate)
+	F.Intrinsic.UI.Msgbox("Starting month cannot be later than end month")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+Gui.Form..Enabled(False)
+
+F.Intrinsic.Control.If(V.DataTable.dtCOCData.Exists)
+	F.Intrinsic.Control.CallSub(Serialize)
+	F.Data.DataTable.Close("dtCOCData")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.CallSub(GetDataTable)
+
+Gui.Form.gsgcDash.AddGridviewFromDatatable("gvCOCData","dtCOCData")
+
+F.Intrinsic.Control.CallSub(SetupGridView,"Form","Form","GridControl","gsgcDash","GridView","gvCOCData")
+
+F.Intrinsic.Control.CallSub(SetVisibleIndex,"Form","Form","GridControl","gsgcDash","GridView","gvCOCData")
+
+Gui.Form.gsgcDash.MainView("gvCOCData")
+F.Intrinsic.Control.CallSub(Deserialize)
+
+F.Intrinsic.Control.If(V.Screen.Form!cmdExport.Enabled,=,False)
+	Gui.Form.cmdExport.Enabled(True)
+F.Intrinsic.Control.EndIf
+
+Gui.Form..Enabled(True)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdRefresh_Click.End
+
+Program.Sub.SetupGridView.Start
+'V.Args.Form, V.Args.GridControl, V.Args.GridView
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetGridViewProperty(V.Args.GridView,"MultiSelect",False)
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_CLOSED","Visible",False)
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"INDEX","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"SERIAL","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"PART","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_NO","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_LINE","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_MANUF","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"CUSTOMER_PO","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DESCRIPTION","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ISO","AllowFocus",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"API","AllowFocus",False)
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"INDEX","Caption","index")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"SERIAL","Caption","SN")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"PART","Caption","PN")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_NO","Caption","PKD SO#")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_LINE","Caption","LI")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_MANUF","Caption","Date")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"CUSTOMER_PO","Caption","Cust PO")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DESCRIPTION","Caption","Desc")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ISO","Caption","ISO")
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"API","Caption","API")
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"INDEX","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"SERIAL","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"PART","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_NO","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_LINE","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_MANUF","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"CUSTOMER_PO","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DESCRIPTION","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ISO","HeaderFontBold",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"API","HeaderFontBold",True)
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"INDEX","MinWidth",55)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"SERIAL","MinWidth",150)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"PART","MinWidth",150)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_NO","MinWidth",75)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_LINE","MinWidth",75)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_MANUF","MinWidth",95)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"CUSTOMER_PO","MinWidth",150)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DESCRIPTION","MinWidth",250)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ISO","MinWidth",45)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"API","MinWidth",45)
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"INDEX","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"SERIAL","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"PART","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_NO","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_LINE","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_MANUF","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"CUSTOMER_PO","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DESCRIPTION","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ISO","ReadOnly",True)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"API","ReadOnly",True)
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"INDEX","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"SERIAL","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"PART","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_NO","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_LINE","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_MANUF","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"CUSTOMER_PO","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DESCRIPTION","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ISO","AllowEdit",False)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"API","AllowEdit",False)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.SetupGridView.End
+
+Program.Sub.Deserialize.Start
+V.Local.sError.Declare
+V.Local.Serialize.Declare
+F.Intrinsic.Control.Try
+
+'GridView - gvCOCData
+F.Global.Registry.ReadValue(V.Caller.User,V.Caller.CompanyCode,"gvCOCData",5630,1000,6,"",V.Local.Serialize)
+F.Intrinsic.Control.If(V.Local.Serialize.Trim,<>,"")
+	Gui.Form.gsgcDash.Deserialize(V.Local.Serialize)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Deserialize.End
+
+Program.Sub.Serialize.Start
+V.Local.sError.Declare
+V.Local.Serialize.Declare
+F.Intrinsic.Control.Try
+
+'GridView - gvCOCData
+Gui.Form.gsgcDash.Serialize("gvCOCData",V.Local.Serialize)
+F.Global.Registry.AddValue(V.Caller.User,V.Caller.CompanyCode,"gvCOCData",5630,1000,False,"Serialize",False,0,-999.0,1/1/1980,12:00:00 AM,V.Local.Serialize)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Serialize.End
+
+Program.Sub.SetVisibleIndex.Start
+'V.Args.Form, V.Args.GridControl, V.Args.GridView
+V.Local.sError.Declare
+V.Local.iIndex.Declare
+F.Intrinsic.Control.Try
+
+V.Local.iIndex.Set(-1)
+
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"INDEX","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"SERIAL","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"PART","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_NO","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ORDER_LINE","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DATE_MANUF","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"CUSTOMER_PO","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"DESCRIPTION","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"ISO","VisibleIndex",V.Local.iIndex.++)
+Gui.[V.Args.Form].[V.Args.GridControl].SetColumnProperty(V.Args.GridView,"API","VisibleIndex",V.Local.iIndex.++)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.SetVisibleIndex.End
+
+Program.Sub.cmdExport_Click.Start
+V.Local.sError.Declare
+V.Local.sForm.Declare(String, "Form")
+V.Local.sControl.Declare(String, "gsgcDash")
+V.Local.sFileExport.Declare
+V.Local.sMsg.Declare
+V.Local.sDate.Declare
+V.Local.sTime.Declare
+V.Local.bExcel.Declare
+V.Local.bFileLocked.Declare
+F.Intrinsic.Control.Try
+
+'Arc Number - 5630
+F.Automation.MSExcel.CheckPresence(V.Local.bExcel)
+F.Intrinsic.String.DateString(V.Ambient.Date,V.Local.sDate)
+F.Intrinsic.String.TimeString(V.Ambient.Time,V.Local.sTime)
+F.Intrinsic.Control.If(V.Local.bExcel)
+	F.Intrinsic.String.Build("{0}GCG_5630_{1}_Export_{2}_{3}.xlsx",V.Caller.LocalGSSTempDir,V.Local.sControl,V.Local.sDate,V.Local.sTime,V.Local.sFileExport)
+	F.Intrinsic.File.IsFileLocked(V.Local.sFileExport,V.Local.bFileLocked)
+	F.Intrinsic.Control.If(V.Local.bFileLocked)
+		F.Intrinsic.String.Build("File is already open. Please close and export again.{0}File : {1}",V.Ambient.NewLine,V.Local.sFileExport,V.Local.sMsg)
+		F.Intrinsic.UI.Msgbox(V.Local.sMsg,"File In Use")
+	F.Intrinsic.Control.Else
+		Gui.[V.Local.sForm].[V.Local.sControl].Export(V.Local.sFileExport,"xlsx")
+		F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Build("{0}GCG_5630_{1}_Export_{2}_{3}.csv",V.Caller.LocalGssTempDir,V.Local.sControl,V.Local.sDate,V.Local.sTime,V.Local.sFileExport)
+	F.Intrinsic.File.IsFileLocked(V.Local.sFileExport,V.Local.bFileLocked)
+	F.Intrinsic.Control.If(V.Local.bFileLocked)
+		F.Intrinsic.String.Build("File is already open. Please close and export again.{0}File: {1}",V.Ambient.NewLine,V.Local.sFileExport,V.Local.sMsg)
+		F.Intrinsic.UI.Msgbox(V.Local.sMsg,"File In Use")
+	F.Intrinsic.Control.Else
+		Gui.[V.Local.sForm].[V.Local.sControl].Export(V.Local.sFileExport,"csv")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdExport_Click.End
+
+Program.Sub.txtBegMonth_Change.Start
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.If(V.Screen.Form!txtBegMonth.Text,=,"")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.Screen.Form!txtBegMonth.Text,<,1)
+	Gui.Form.txtBegMonth.Text(1)
+F.Intrinsic.Control.ElseIf(V.Screen.Form!txtBegMonth.Text,>,12)
+	Gui.Form.txtBegMonth.Text(12)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.txtBegMonth_Change.End
+
+Program.Sub.txtEndMonth_Change.Start
+V.Local.sError.Declare
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.If(V.Screen.Form!txtEndMonth.Text,=,"")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.Screen.Form!txtEndMonth.Text,<,1)
+	Gui.Form.txtEndMonth.Text(1)
+F.Intrinsic.Control.ElseIf(V.Screen.Form!txtEndMonth.Text,>,12)
+	Gui.Form.txtEndMonth.Text(12)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.txtEndMonth_Change.End
